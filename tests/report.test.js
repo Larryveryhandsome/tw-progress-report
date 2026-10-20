@@ -267,3 +267,65 @@ test('匯入壞掉的 JSON：回傳 parseError，讓畫面顯示「匯入失敗�
   const app = fs.readFileSync(path.join(root, 'js', 'app.js'), 'utf8');
   assert.ok(app.includes('匯入失敗') && app.includes('noticeTitle'));
 });
+
+// ---------- 擴展性／漏洞檢視後補的測試 ----------
+test('遮蔽：姓名中間有空白、全形、稱謂前有空白、一格多位，都不會漏出名字', () => {
+  const cases = { '王 大明': '王○○', '王　大明': '王○○', '王大明 先生': '王先生', '陳 小 姐': '陳小姐', 'Ａ３－王大明': 'A3-王○○', '王大明、李小華': '王○○、李○○', '陳小姐/林先生': '陳小姐、林先生', '歐陽 小華': '歐陽○○' };
+  for (const [raw, want] of Object.entries(cases)) assert.equal(R.maskName(raw, 'title'), want, raw);
+  for (const raw of Object.keys(cases)) for (const bad of ['大明', '小華', '小明']) assert.ok(!R.maskName(raw, 'circle').includes(bad), raw);
+});
+
+test('遮蔽：各種電話寫法、Email、身分證、LINE 帳號都擋得住，一般數字與日期不受影響', () => {
+  for (const t of ['0912.345.678', '０９１２３４５６７８', '0912/345/678', '09 12 34 56 78', '+886 912 345 678', '+886912345678', '02-2345-6789', '(02)2345-6789', '零九一二三四五六七八', '0912\u200b345678']) {
+    const m = R.maskPhones('請聯絡 ' + t + ' 謝謝');
+    assert.ok(/\*\*\*|已隱藏/.test(m), t + ' → ' + m);
+    assert.ok(!/345|2345|三四五/.test(m), t + ' → ' + m);
+  }
+  for (const t of ['abc@gmail.com', 'abc＠gmail.com', 'abc at gmail dot com', 'A123456789', '加賴 mysecret99', 'LINE ID: wang_123', '@wang_999']) {
+    assert.ok(/已隱藏/.test(R.maskPhones(t)), t);
+  }
+  assert.equal(R.maskPhones('2026-10-05 預算 1000000 元 0.75 公斤 12 月 25 日'), '2026-10-05 預算 1000000 元 0.75 公斤 12 月 25 日');
+});
+
+test('LINE 文字版：客戶全名／電話寫在摘要、工作項目、說明裡也會被遮，不會漏出全名', () => {
+  const d = R.normalize({ periods: [{ start: '2026-10-05', end: '2026-10-11', summary: '帶王大明看房，電話 0912345678',
+    progress: [{ item: '回覆王 大明議價', status: 'doing', note: '王大明的 Email ming@x.com，市話 02-23456789' }],
+    todos: [{ task: '寄資料給王大明先生', status: 'todo' }],
+    clients: [{ client: '王大明先生', stage: '議價', progress: '手機 0912-345-678' }] }] }, CFG).data;
+  const prev = R.normalize({ periods: [{ start: '2026-09-28', end: '2026-10-04', progress: [{ item: '聯絡王大明', status: 'doing' }], clients: [{ client: '王大明先生' }] }] }, CFG).data.periods[0];
+  const txt = R.lineText(d.periods[0], Object.assign({}, CFG, { maskClients: 'title' }), { prev });
+  for (const leak of ['王大明', '大明', '0912345678', '0912-345', '345','ming@x.com', '23456789']) assert.ok(!txt.includes(leak), `漏出 ${leak}：\n${txt}`);
+  assert.ok(txt.includes('王'));
+  // none 模式維持原樣
+  assert.ok(R.lineText(d.periods[0], Object.assign({}, CFG, { maskClients: 'none' }), {}).includes('王大明'));
+});
+
+test('clientNames：去掉戶別代號與稱謂，只收 2～6 個中文字的姓名', () => {
+  const names = R.clientNames([{ clients: [{ client: 'A3-王大明先生' }, { client: '李小姐' }, { client: 'Amy Chen' }, { client: '陳小華、林美麗' }] }]);
+  assert.deepEqual(names.sort(), ['王大明', '林美麗', '陳小華'].sort());
+});
+
+test('匯入惡意 JSON：__proto__、constructor、超多筆、錯型別都不會讓程式出錯或污染原型', () => {
+  const evil = '{"periods":[{"start":"2026-10-05","end":"2026-10-11","__proto__":{"polluted":1},"progress":[{"item":"x","status":"doing","__proto__":{"polluted":2},"constructor":{"prototype":{"polluted":3}}},123,null,"字串項目"],"todos":"不是陣列","clients":[{"client":{"a":1}}]}]}';
+  const r = R.normalize(evil, CFG);
+  assert.equal({}.polluted, undefined);
+  assert.equal(r.data.periods.length, 1);
+  assert.deepEqual(r.data.periods[0].progress.map(x => x.item), ['x', '字串項目']);
+  assert.equal(R.normalize('{壞掉', CFG).parseError, true);
+});
+
+test('效能：50 期 × 每期 200 筆，正規化與 LINE 文字版在 2 秒內', () => {
+  const periods = [];
+  for (let k = 0; k < 50; k++) {
+    const day = String(k % 28 + 1).padStart(2, '0'), mo = String(Math.floor(k / 28) + 1).padStart(2, '0');
+    periods.push({ start: `2026-${mo}-${day}`, end: `2026-${mo}-${day}`,
+      progress: Array.from({ length: 100 }, (_, i) => ({ item: `項目${i}`, status: i % 4 ? 'doing' : 'done' })),
+      todos: Array.from({ length: 80 }, (_, i) => ({ task: `待辦${i}`, status: 'todo' })),
+      clients: Array.from({ length: 20 }, (_, i) => ({ client: `王大${i}先生`, progress: '電話 0912345678' })) });
+  }
+  const t = Date.now();
+  const r = R.normalize({ periods }, CFG);
+  const txt = R.lineText(r.data.periods[0], CFG, { prev: r.data.periods[1], names: R.clientNames(r.data) });
+  assert.ok(Date.now() - t < 2000, `太慢：${Date.now() - t}ms`);
+  assert.ok(!txt.includes('0912345678'));
+});

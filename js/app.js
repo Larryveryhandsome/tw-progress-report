@@ -61,7 +61,7 @@
   }
   function persist() {
     if (!writeStore(KEY, JSON.stringify(data))) {
-      toast('這個瀏覽器不能存資料（可能是無痕模式），請記得按「匯出 JSON」備份');
+      toast('儲存失敗：瀏覽器不能存資料（無痕模式或空間已滿），這次的變更沒有存下來！請立刻按「匯出 JSON」備份');
       return false;
     }
     source = '這台電腦存的資料';
@@ -73,6 +73,9 @@
   const team = () => data.team || CFG.team || '';
   const cur = () => data.periods[idx] || null;
   const prev = () => data.periods[idx + 1] || null;
+  // 已知的客戶姓名（全部期別）：寫在別處（摘要、工作項目、說明）的全名也會被遮蔽
+  const names = () => R.clientNames(data);
+  const mt = s => R.maskText(s, CFG, names());
   const asOf = p => (CFG.overdueBase === 'today' ? R.today() : (p && p.end) || R.today());
 
   function badge(key) {
@@ -125,7 +128,7 @@
     }
     const s = R.computeStats(p, CFG, asOf(p));
     box.appendChild(h('h2', null, '本期總覽', h('span', { class: 'count' }, `（${R.periodLabel(p)}）`)));
-    if (p.summary) box.appendChild(h('p', { class: 'summary-text' }, p.summary));
+    if (p.summary) box.appendChild(h('p', { class: 'summary-text' }, mt(p.summary)));
     box.appendChild(h('div', { class: 'kpis' },
       h('div', { class: 'kpi' }, h('b', null, s.total ? Math.round(s.completionRate * 100) + '%' : '—'), h('span', null, `完成率（${s.done}/${s.total}）`)),
       h('div', { class: 'kpi' + (s.overdue ? ' bad' : '') }, h('b', null, s.overdue), h('span', null, '逾期')),
@@ -153,17 +156,19 @@
     if (!d.count) { box.appendChild(h('p', { class: 'empty' }, '和上期相比沒有變化。')); return; }
     const lab = k => R.statusInfo(k, CFG).label;
     const secLab = k => R.sectionOf(k).label;
-    const mm = n => R.maskName(n, R.maskMode(CFG));
+    const mm = n => R.maskMode(CFG) === 'none' ? n : R.maskName(n, R.maskMode(CFG));
+    const nm = names();
+    const mx = s => R.maskText(s, CFG, nm);
     const ul = h('ul', { class: 'diff' });
     const row = (k, ...c) => ul.appendChild(h('li', null, h('span', { class: 'k' }, k), ...c));
-    if (d.newlyDone.length) row('新完成', h('span', { class: 'add' }, d.newlyDone.map(x => x.name).join('、')));
+    if (d.newlyDone.length) row('新完成', h('span', { class: 'add' }, d.newlyDone.map(x => mx(x.name)).join('、')));
     const changed = d.statusChanged.filter(x => !R.isDone({ status: x.to }, CFG));
-    if (changed.length) row('狀態變化', changed.map(x => `${x.name}：${lab(x.from)} → ${lab(x.to)}`).join('；'));
-    if (d.moved.length) row('轉區塊', d.moved.map(x => `${x.name}（${secLab(x.from)} → ${secLab(x.to)}）`).join('；'));
-    if (d.added.length) row('新增', h('span', { class: 'add' }, d.added.map(x => x.name).join('、')));
-    if (d.removed.length) row('拿掉', h('span', { class: 'del' }, d.removed.map(x => x.name).join('、')), '（上期沒完成、本期沒列）');
+    if (changed.length) row('狀態變化', changed.map(x => `${mx(x.name)}：${lab(x.from)} → ${lab(x.to)}`).join('；'));
+    if (d.moved.length) row('轉區塊', d.moved.map(x => `${mx(x.name)}（${secLab(x.from)} → ${secLab(x.to)}）`).join('；'));
+    if (d.added.length) row('新增', h('span', { class: 'add' }, d.added.map(x => mx(x.name)).join('、')));
+    if (d.removed.length) row('拿掉', h('span', { class: 'del' }, d.removed.map(x => mx(x.name)).join('、')), '（上期沒完成、本期沒列）');
     if (d.clientAdded.length) row('新客戶', d.clientAdded.map(x => mm(x.name)).join('、'));
-    if (d.clientChanged.length) row('客戶進展', d.clientChanged.map(x => `${mm(x.name)}：${x.from || '—'} → ${x.to || '—'}`).join('；'));
+    if (d.clientChanged.length) row('客戶進展', d.clientChanged.map(x => `${mm(x.name)}：${mx(x.from) || '—'} → ${mx(x.to) || '—'}`).join('；'));
     if (d.clientRemoved.length) row('不再追蹤', d.clientRemoved.map(x => mm(x.name)).join('、'));
     box.appendChild(ul);
   }
@@ -173,6 +178,7 @@
     if (!p) return;
     const at = asOf(p);
     const mode = R.maskMode(CFG);
+    const nm = names();
     for (const sec of R.SECTIONS) {
       const items = p[sec.key] || [];
       if (!items.length && !editing) continue;
@@ -184,7 +190,7 @@
       if (!items.length) { card.appendChild(h('p', { class: 'empty' }, '（沒有資料）')); wrap.appendChild(card); continue; }
       const ul = h('ul', { class: 'items' });
       items.forEach((raw, i) => {
-        const it = sec.isClient ? R.maskClient(raw, CFG) : raw;
+        const it = R.maskItem(raw, sec, CFG, nm);
         const late = R.isOverdue(raw, sec, at, CFG);
         const meta = [];
         if (it.owner) meta.push(h('span', null, '👤 ' + it.owner));
@@ -319,8 +325,10 @@
   $('btnLine').addEventListener('click', () => {
     const p = cur();
     if (!p) return;
-    $('lineText').value = R.lineText(p, CFG, { prev: prev(), project: project(), team: team(), asOf: asOf(p) });
-    $('lineMsg').textContent = `${$('lineText').value.length} 字`;
+    $('lineText').value = R.lineText(p, CFG, { prev: prev(), project: project(), team: team(), asOf: asOf(p), names: names() });
+    const n = $('lineText').value.length;
+    // LINE 單則文字訊息上限 5000 字，超過會送不出去
+    $('lineMsg').textContent = n > 5000 ? `${n} 字，超過 LINE 單則 5000 字上限，請分兩則貼（或刪減內容）` : `${n} 字`;
     $('dlgLine').showModal();
   });
   $('lineClose').addEventListener('click', () => $('dlgLine').close());
@@ -383,8 +391,19 @@
   $('periodSel').addEventListener('change', e => { idx = +e.target.value || 0; render(); });
   $('editMode').addEventListener('change', e => { pref.edit = e.target.checked; savePref(); render(); });
 
+  // 別的分頁改了資料 → 這頁重新讀入，避免兩個分頁互相用舊資料整份覆蓋
+  window.addEventListener('storage', e => {
+    if (e.key !== KEY || e.newValue == null) return;
+    const keep = idx;
+    load(e.newValue, '這台電腦存的資料');
+    idx = Math.min(keep, Math.max(0, data.periods.length - 1));
+    render();
+  });
+
   // ---------- 啟動 ----------
   const saved = readStore(KEY);
+  // 存的資料壞掉（JSON 讀不了）時，先另存一份，避免之後一存檔就把它蓋掉而救不回來
+  if (saved) { try { JSON.parse(saved); } catch (e) { writeStore(KEY + ':corrupt-backup', saved); } }
   if (saved) {
     load(saved, '這台電腦存的資料');
   } else {

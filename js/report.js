@@ -469,21 +469,16 @@
   const TITLES = ['先生', '小姐', '太太', '女士', '媽媽', '爸爸', '阿姨', '伯伯', '老師', '夫婦', '一家'];
   const MASK = '○○';
 
-  /**
-   * 客戶姓名遮蔽。mode：
-   *   'title'  （預設）有稱謂留「姓＋稱謂」：王大明先生 → 王先生；沒稱謂：王大明 → 王○○
-   *   'circle' 一律「姓＋○○」：王先生 → 王○○
-   *   'none'   不遮蔽（原則上不建議）
-   * 前面的戶別代號會保留：A3-王大明 → A3-王○○
-   */
-  function maskName(name, mode) {
-    const s = str(name);
-    if (!s || mode === 'none' || mode === false) return s;
-    // 「12樓-李小姐」：分隔符號後面是中文名字 → 前面整段當代號；否則只認「A3」這種含數字的代號
-    const m = s.match(/^(.*[-_#:：\s])([㐀-鿿][^-_#:：\s]*)$/) ||
-      s.match(/^([A-Za-z]*\d[A-Za-z0-9]*[-_#\s:：]*)?(.*)$/);
+  const NAME_SEP = /[、,，/／&＆+＋;；]|及/;   // 一格裡寫了好幾位客戶時，每一位都要遮
+  const CODE_PREFIX = /^((?:[A-Za-z]*\d[A-Za-z0-9]*[樓號戶棟F]?)[-_#:：\s]+|[^\s]{1,12}[-_#:：]+)?([\s\S]*)$/;
+
+  function maskOne(raw, mode) {
+    // 全形英數 → 半形、拿掉中間的空白（「王 大明」「王大明 先生」都要遮到）
+    const s = str(raw).normalize('NFKC');
+    if (!s) return '';
+    const m = s.match(CODE_PREFIX);
     const prefix = m[1] || '';
-    const body = m[2].trim();
+    const body = m[2].replace(/[\s​-‍﻿]+/g, '');
     if (!body) return s;
     if (!/^[㐀-鿿]/.test(body)) {
       // 英文或其他：只留第一個字母
@@ -495,11 +490,48 @@
     return prefix + surname + MASK;
   }
 
-  /** 文字裡的手機號碼遮成 0900-***-***（原則上客戶電話不要寫進彙報） */
+  /**
+   * 客戶姓名遮蔽。mode：
+   *   'title'  （預設）有稱謂留「姓＋稱謂」：王大明先生 → 王先生；沒稱謂：王大明 → 王○○
+   *   'circle' 一律「姓＋○○」：王先生 → 王○○
+   *   'none'   不遮蔽（原則上不建議）
+   * 前面的戶別代號會保留：A3-王大明 → A3-王○○。全形、中間有空白（王 大明）、
+   * 一格寫多位（王大明、李小華）都會逐位遮蔽。
+   */
+  function maskName(name, mode) {
+    const s = str(name);
+    if (!s || mode === 'none' || mode === false) return s;
+    const parts = s.split(NAME_SEP).map(x => x.trim()).filter(Boolean);
+    return (parts.length ? parts : [s]).map(x => maskOne(x, mode)).join('、');
+  }
+
+  const PHONE_SEP = String.raw`[\s.\-/()·•,_]*`;
+  const reEscape = x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const cleanText = x => String(x == null ? '' : x).normalize('NFKC').replace(/[​-‍⁠﻿­]/g, '').replace(/[‐-―−－]/g, '-');
+
+  /** 文字裡的手機／市話／+886、Email、身分證字號、LINE／IG 帳號遮掉（原則上客戶聯絡方式不要寫進彙報） */
   function maskPhones(text) {
-    return String(text == null ? '' : text)
-      .replace(/(09\d{2})[-\s]?\d{3}[-\s]?\d{3}/g, '$1-***-***')
-      .replace(/(\+?886)[-\s]?9(\d{2})[-\s]?\d{3}[-\s]?\d{3}/g, '$1-9$2-***-***');
+    const orig = String(text == null ? '' : text);
+    const base = cleanText(orig);
+    const t = base
+      .replace(/[A-Za-z0-9._%+-]+\s*@\s*[A-Za-z0-9-]+(?:\s*\.\s*[A-Za-z0-9-]+)*\s*\.\s*[A-Za-z]{2,}/g, '[Email已隱藏]')
+      .replace(/[A-Za-z0-9._%+-]+\s*(?:\(at\)|\[at\]|\s+at\s+)\s*[A-Za-z0-9-]+(?:\s*(?:\(dot\)|\[dot\]|\s+dot\s+|\.)\s*[A-Za-z0-9-]+)*\s*(?:\(dot\)|\[dot\]|\s+dot\s+|\.)\s*[A-Za-z]{2,}/gi, '[Email已隱藏]')
+      .replace(/(?<![A-Za-z])[A-Z]\s?[12](?:\s?\d){8}(?!\d)/gi, '[證號已隱藏]')
+      .replace(new RegExp(String.raw`(?<!\d)\+?886${PHONE_SEP}\(?0?\)?((?:${PHONE_SEP}\d){8,9})(?!\d)`, 'g'), (all, rest) => {
+        const d = rest.replace(/\D/g, '');
+        return d[0] === '9' ? `+886-${d.slice(0, 3)}-***-***` : '[電話已隱藏]';
+      })
+      .replace(new RegExp(String.raw`(?<!\d)(?<!\d[-/.])\(?0((?:${PHONE_SEP}\d){8,9})(?!\d)`, 'g'), (all, rest) => {
+        const d = '0' + rest.replace(/\D/g, '');
+        return /^09\d{8}$/.test(d) ? `${d.slice(0, 4)}-***-***` : '[電話已隱藏]';
+      })
+      .replace(/[零〇○一二三四五六七八九]{8,}/g, '[電話已隱藏]')
+      .replace(/(?<![A-Za-z])(line|賴|ig|instagram|fb|facebook|wechat|weixin|微信|telegram|tg|whatsapp)\s*(?:id|帳號)?\s*[:：=]\s*@?[A-Za-z0-9._-]{2,}/gi, '$1[已隱藏]')
+      .replace(/(?<![A-Za-z])(line|賴|ig|instagram|fb|facebook|wechat|weixin|微信|telegram|tg|whatsapp)\s*(?:id|帳號)\s*@?[A-Za-z0-9._-]{2,}/gi, '$1[已隱藏]')
+      .replace(/(?<![A-Za-z])(line|賴|ig|fb|wechat|微信|telegram|tg|whatsapp)\s*@?(?=[A-Za-z0-9._-]*\d)[A-Za-z0-9._-]{3,}/gi, '$1[已隱藏]')
+      .replace(/(?<![A-Za-z0-9._@])@[A-Za-z0-9._-]{4,}/g, '[帳號已隱藏]');
+    // 沒有任何東西被遮就回傳原文（不去動全形標點等）
+    return t === base ? orig : t;
   }
 
   function maskMode(cfg) {
@@ -509,15 +541,53 @@
     return 'title';
   }
 
-  /** 客戶資料的顯示版本（名字遮蔽、文字裡的電話遮蔽） */
-  function maskClient(c, cfg) {
+  /** 從所有期別收集客戶姓名（去掉戶別代號、稱謂），給「全文掃描遮蔽」用：名字寫在別處也會被遮到。 */
+  function clientNames(data) {
+    const periods = Array.isArray(data) ? data : ((data && data.periods) || []);
+    const set = new Set();
+    for (const p of periods) {
+      for (const c of (p && p.clients) || []) {
+        for (const part of str(c && c.client).normalize('NFKC').split(NAME_SEP)) {
+          let n = part.trim().replace(CODE_PREFIX, '$2').replace(/[\s​-‍﻿]+/g, '');
+          const t = TITLES.find(x => n.endsWith(x) && n.length > x.length);
+          if (t) n = n.slice(0, -t.length);
+          if (/^[㐀-鿿]{2,6}$/.test(n)) set.add(n);
+        }
+      }
+    }
+    return Array.from(set).sort((a, b) => b.length - a.length);
+  }
+
+  const nameRe = new Map();   // 姓名 → 編譯好的比對式（資料多時不用每筆重編）
+  /** 一般文字的遮蔽：已知客戶全名 → 姓＋○○，再遮電話／Email／證號／帳號。mode 為 none 時原樣回傳。 */
+  function maskText(text, cfg, names) {
     const mode = maskMode(cfg);
-    if (mode === 'none') return Object.assign({}, c);
-    return Object.assign({}, c, {
-      client: maskName(c.client, mode),
-      progress: maskPhones(c.progress),
-      stage: maskPhones(c.stage),
-    });
+    let t = String(text == null ? '' : text);
+    if (mode === 'none' || !t) return t;
+    for (const n of names || []) {
+      if (n.length < 2) continue;
+      let re = nameRe.get(n);
+      if (!re) { re = new RegExp(Array.from(n).map(reEscape).join('[\\s\\u3000]*'), 'g'); nameRe.set(n, re); }
+      re.lastIndex = 0;
+      t = t.replace(re, maskName(n, 'circle'));
+    }
+    return maskPhones(t);
+  }
+
+  /** 一筆資料的顯示版本：每個文字欄位都過 maskText；客戶姓名再過 maskName。 */
+  function maskItem(it, sec, cfg, names) {
+    if (maskMode(cfg) === 'none') return Object.assign({}, it);
+    const out = Object.assign({}, it);
+    for (const f of sec.fields) {
+      if (f.type === 'text' || f.type === 'textarea') out[f.key] = maskText(it[f.key], cfg, names);
+    }
+    if (sec.isClient) out[sec.nameField] = maskName(it[sec.nameField], maskMode(cfg));
+    return out;
+  }
+
+  /** 客戶資料的顯示版本（名字遮蔽、文字裡的電話遮蔽） */
+  function maskClient(c, cfg, names) {
+    return maskItem(c, sectionOf('clients'), cfg, names);
   }
 
   // ---------- 新增一期 ----------
@@ -562,6 +632,8 @@
     const project = o.project || c.project || '';
     const title = o.title || c.title || '工作進度彙報';
     const team = o.team || c.team || '';
+    const names = o.names || clientNames([period, o.prev]);
+    const mt = x => maskText(x, c, names);
     const L = [];
     L.push(`【${[project, title].filter(Boolean).join(' ')}】`);
     L.push([team, periodLabel(period)].filter(Boolean).join('｜'));
@@ -570,7 +642,7 @@
         st.filter(s => !doneKeys(c).includes(s.key) && stats.byStatus[s.key]).map(s => `｜${s.label} ${stats.byStatus[s.key]}`).join('') +
         (stats.overdue ? `｜逾期 ${stats.overdue}` : ''));
     }
-    if (period.summary) { L.push(''); L.push(period.summary); }
+    if (period.summary) { L.push(''); L.push(mt(period.summary)); }
 
     const meta = (it, sec) => {
       const bits = [];
@@ -586,7 +658,7 @@
       if (!items.length) continue;
       L.push('');
       L.push(`■ ${sec.label}${sec.isClient && maskMode(c) !== 'none' ? '（姓名已遮蔽）' : ''}`);
-      if (sec.isClient) items = items.map(it => maskClient(it, c));
+      items = items.map(it => maskItem(it, sec, c, names));
       items.forEach(it => {
         const head = sec.hasStatus ? `${statusInfo(it.status, c).icon || '・'} ` : '・';
         const tag = sec.hasStatus ? `［${statusInfo(it.status, c).label}］` : '';
@@ -606,15 +678,15 @@
         L.push('');
         L.push(`■ 與上期（${periodLabel(o.prev)}）相比`);
         const lab = k => statusInfo(k, c).label;
-        if (d.newlyDone.length) L.push(`・新完成：${d.newlyDone.map(x => x.name).join('、')}`);
+        if (d.newlyDone.length) L.push(`・新完成：${d.newlyDone.map(x => mt(x.name)).join('、')}`);
         const changed = d.statusChanged.filter(x => !isDone({ status: x.to }, c));
-        if (changed.length) L.push(`・狀態變化：${changed.map(x => `${x.name} ${lab(x.from)}→${lab(x.to)}`).join('、')}`);
-        if (d.moved.length) L.push(`・轉區塊：${d.moved.map(x => `${x.name}（${sectionOf(x.from).label}→${sectionOf(x.to).label}）`).join('、')}`);
-        if (d.added.length) L.push(`・新增：${d.added.map(x => x.name).join('、')}`);
-        if (d.removed.length) L.push(`・移除：${d.removed.map(x => x.name).join('、')}`);
-        const mm = n => maskName(n, maskMode(c));
+        if (changed.length) L.push(`・狀態變化：${changed.map(x => `${mt(x.name)} ${lab(x.from)}→${lab(x.to)}`).join('、')}`);
+        if (d.moved.length) L.push(`・轉區塊：${d.moved.map(x => `${mt(x.name)}（${sectionOf(x.from).label}→${sectionOf(x.to).label}）`).join('、')}`);
+        if (d.added.length) L.push(`・新增：${d.added.map(x => mt(x.name)).join('、')}`);
+        if (d.removed.length) L.push(`・移除：${d.removed.map(x => mt(x.name)).join('、')}`);
+        const mm = n => maskMode(c) === 'none' ? n : maskName(n, maskMode(c));
         if (d.clientAdded.length) L.push(`・新客戶：${d.clientAdded.map(x => mm(x.name)).join('、')}`);
-        if (d.clientChanged.length) L.push(`・客戶進展：${d.clientChanged.map(x => `${mm(x.name)} ${x.from || '—'}→${x.to || '—'}`).join('、')}`);
+        if (d.clientChanged.length) L.push(`・客戶進展：${d.clientChanged.map(x => `${mm(x.name)} ${mt(x.from) || '—'}→${mt(x.to) || '—'}`).join('、')}`);
       }
     }
     return L.join('\n');
@@ -626,7 +698,7 @@
     escapeHTML, uid,
     parseDate, parseDateRange, addDays, today, shortDate, periodLabel,
     normalize, sortPeriods, isDone, isOverdue, computeStats, diffPeriods,
-    maskName, maskPhones, maskMode, maskClient,
+    maskName, maskPhones, maskMode, maskClient, maskItem, maskText, clientNames,
     newPeriodFrom, lineText,
   };
 });
