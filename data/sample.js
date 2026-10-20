@@ -1,0 +1,287 @@
+/* 示範資料（全部是假的）。和 data/report.example.json 內容相同，讓網頁不用選檔也能試用。 */
+window.REPORT_DATA = {
+  "project": "示範建案",
+  "team": "示範行銷團隊",
+  "periods": [
+    {
+      "id": "p3",
+      "start": "2026-10-12",
+      "end": "2026-10-18",
+      "summary": "使用執照已核發，下週開始安排交屋前驗屋；B 棟車位配置圖仍待建設公司確認。",
+      "progress": [
+        {
+          "item": "使用執照申請",
+          "status": "done",
+          "owner": "案場主任",
+          "due": "2026-10-15",
+          "priority": "high",
+          "note": "10/14 取得使用執照，已通知全體客戶。"
+        },
+        {
+          "item": "B 棟車位配置圖確認",
+          "status": "blocked",
+          "owner": "示範業務A",
+          "due": "2026-10-10",
+          "priority": "high",
+          "note": "建設公司設計部尚未回覆，已二度催件。"
+        },
+        {
+          "item": "接待中心冷氣維修",
+          "status": "doing",
+          "owner": "案場主任",
+          "due": "2026-10-22",
+          "priority": "normal",
+          "note": "示範冷氣行估價中，預計下週施工。"
+        },
+        {
+          "item": "網路廣告投放",
+          "status": "doing",
+          "owner": "代銷企劃",
+          "due": "2026-10-31",
+          "priority": "normal",
+          "note": "本週來電 12 組、來人 5 組。"
+        }
+      ],
+      "todos": [
+        {
+          "task": "交屋前驗屋時程表",
+          "status": "doing",
+          "owner": "示範業務B",
+          "due": "2026-10-20",
+          "priority": "high",
+          "note": "先排已繳清尾款的 6 戶。"
+        },
+        {
+          "task": "A3 量窗簾尺寸",
+          "status": "todo",
+          "owner": "示範業務A",
+          "due": "2026-10-16",
+          "priority": "normal",
+          "note": "客戶週末才有空，改約 10/19。"
+        },
+        {
+          "task": "管委會籌備會議通知",
+          "status": "todo",
+          "owner": "案場主任",
+          "due": "2026-10-25",
+          "priority": "low",
+          "note": ""
+        }
+      ],
+      "plans": [
+        {
+          "plan": "交屋說明會",
+          "owner": "案場主任",
+          "due": "2026-10-26",
+          "details": "準備交屋手冊、鑰匙點交表、水電表讀數。"
+        },
+        {
+          "plan": "銷售海報改版",
+          "owner": "代銷企劃",
+          "due": "2026-10-24",
+          "details": "加上「使用執照已核發、即可交屋」標語。"
+        }
+      ],
+      "completed": [
+        {
+          "item": "使用執照申請",
+          "date": "2026-10-14",
+          "owner": "案場主任",
+          "note": "已上傳至共用資料夾。"
+        },
+        {
+          "item": "樣品屋燈光調整",
+          "date": "2026-10-13",
+          "owner": "示範業務B",
+          "note": ""
+        }
+      ],
+      "clients": [
+        {
+          "client": "王先生",
+          "owner": "示範業務A",
+          "stage": "議價",
+          "next": "2026-10-19",
+          "progress": "第三次來看 B5，想再談車位價格。"
+        },
+        {
+          "client": "陳小姐",
+          "owner": "示範業務B",
+          "stage": "簽約",
+          "next": "2026-10-21",
+          "progress": "10/17 已簽約，下週對保。"
+        },
+        {
+          "client": "張太太",
+          "owner": "示範業務A",
+          "stage": "二次帶看",
+          "next": "2026-10-15",
+          "progress": "想帶家人再看一次 A 棟邊間。"
+        },
+        {
+          "client": "李先生",
+          "owner": "示範業務B",
+          "stage": "初次來訪",
+          "next": "2026-10-24",
+          "progress": "網路廣告來客，預算需確認。"
+        }
+      ]
+    },
+    {
+      "id": "p2",
+      "start": "2026-10-05",
+      "end": "2026-10-11",
+      "summary": "等待縣市政府通知使用執照核發；本週來人量回升。",
+      "progress": [
+        {
+          "item": "使用執照申請",
+          "status": "doing",
+          "owner": "案場主任",
+          "due": "2026-10-15",
+          "priority": "high",
+          "note": "已補件，等主管機關通知。"
+        },
+        {
+          "item": "B 棟車位配置圖確認",
+          "status": "doing",
+          "owner": "示範業務A",
+          "due": "2026-10-10",
+          "priority": "high",
+          "note": "已寄送給建設公司。"
+        },
+        {
+          "item": "網路廣告投放",
+          "status": "doing",
+          "owner": "代銷企劃",
+          "due": "2026-10-31",
+          "priority": "normal",
+          "note": "本週來電 8 組、來人 3 組。"
+        },
+        {
+          "item": "樣品屋燈光調整",
+          "status": "todo",
+          "owner": "示範業務B",
+          "due": "2026-10-14",
+          "priority": "low",
+          "note": ""
+        }
+      ],
+      "todos": [
+        {
+          "task": "A3 量窗簾尺寸",
+          "status": "todo",
+          "owner": "示範業務A",
+          "due": "2026-10-16",
+          "priority": "normal",
+          "note": ""
+        },
+        {
+          "task": "整理已繳尾款戶別",
+          "status": "done",
+          "owner": "示範業務B",
+          "due": "2026-10-09",
+          "priority": "normal",
+          "note": "共 6 戶。"
+        }
+      ],
+      "plans": [
+        {
+          "plan": "交屋前驗屋時程表",
+          "owner": "示範業務B",
+          "due": "2026-10-20",
+          "details": "取得使照後立即排程。"
+        }
+      ],
+      "completed": [
+        {
+          "item": "整理已繳尾款戶別",
+          "date": "2026-10-09",
+          "owner": "示範業務B",
+          "note": ""
+        }
+      ],
+      "clients": [
+        {
+          "client": "王先生",
+          "owner": "示範業務A",
+          "stage": "二次帶看",
+          "next": "2026-10-12",
+          "progress": "看了 B5 與 B7，偏好 B5。"
+        },
+        {
+          "client": "陳小姐",
+          "owner": "示範業務B",
+          "stage": "議價",
+          "next": "2026-10-14",
+          "progress": "家人同意，下次帶訂金。"
+        },
+        {
+          "client": "張太太",
+          "owner": "示範業務A",
+          "stage": "初次來訪",
+          "next": "2026-10-12",
+          "progress": "路過來看，對 A 棟有興趣。"
+        }
+      ]
+    },
+    {
+      "id": "p1",
+      "start": "2026-09-28",
+      "end": "2026-10-04",
+      "summary": "連假期間來人較少，主要處理使照補件。",
+      "progress": [
+        {
+          "item": "使用執照申請",
+          "status": "blocked",
+          "owner": "案場主任",
+          "due": "2026-10-15",
+          "priority": "high",
+          "note": "需補消防查驗文件。"
+        },
+        {
+          "item": "網路廣告投放",
+          "status": "todo",
+          "owner": "代銷企劃",
+          "due": "2026-10-31",
+          "priority": "normal",
+          "note": "素材準備中。"
+        }
+      ],
+      "todos": [
+        {
+          "task": "消防查驗文件補件",
+          "status": "doing",
+          "owner": "案場主任",
+          "due": "2026-10-03",
+          "priority": "high",
+          "note": ""
+        }
+      ],
+      "plans": [
+        {
+          "plan": "B 棟車位配置圖確認",
+          "owner": "示範業務A",
+          "due": "2026-10-10",
+          "details": ""
+        }
+      ],
+      "completed": [],
+      "clients": [
+        {
+          "client": "王先生",
+          "owner": "示範業務A",
+          "stage": "初次來訪",
+          "next": "2026-10-05",
+          "progress": "預算約 1,500 萬，看三房。"
+        },
+        {
+          "client": "陳小姐",
+          "owner": "示範業務B",
+          "stage": "二次帶看",
+          "next": "2026-10-06",
+          "progress": ""
+        }
+      ]
+    }
+  ]
+};

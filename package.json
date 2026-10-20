@@ -1,0 +1,10 @@
+{
+  "name": "tw-progress-report",
+  "version": "1.0.0",
+  "description": "案場／專案進度彙報：多期週報、狀態與逾期統計、本期 vs 上期、客戶姓名遮蔽、LINE 文字版，雙擊 index.html 就能用",
+  "license": "Apache-2.0",
+  "private": true,
+  "scripts": {
+    "test": "node --test \"tests/*.test.js\""
+  }
+}

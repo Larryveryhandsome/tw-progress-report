@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>工作進度彙報</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="head">
+      <h1 id="title">工作進度彙報</h1>
+      <div id="subtitle" class="subtitle"></div>
+    </div>
+    <div class="actions no-print">
+      <label class="period">期別
+        <select id="periodSel" aria-label="選擇期別"></select>
+      </label>
+      <button id="btnLine" type="button" class="primary">產生 LINE 文字版</button>
+      <button id="btnPrint" type="button">列印／存 PDF</button>
+      <label class="toggle"><input type="checkbox" id="editMode"> 編輯模式</label>
+    </div>
+  </header>
+
+  <main>
+    <div id="notice" class="notice" hidden></div>
+
+    <div id="periodBar" class="card period-bar no-print" hidden>
+      <button type="button" id="btnNewPeriod">＋ 新增一期</button>
+      <button type="button" id="btnEditPeriod">編輯本期日期／摘要</button>
+      <button type="button" id="btnDelPeriod" class="danger">刪除本期</button>
+    </div>
+
+    <section id="overview" class="card"></section>
+    <section id="diff" class="card"></section>
+    <div id="sections"></div>
+
+    <details class="card no-print" id="dataBox">
+      <summary>資料：匯出／匯入／還原</summary>
+      <p id="dataInfo" class="hint"></p>
+      <div class="row">
+        <button id="btnExport" type="button">匯出 JSON</button>
+        <label class="file">匯入 JSON<input type="file" id="file" accept=".json,application/json"></label>
+        <button id="btnSample" type="button">改用示範資料</button>
+        <button id="btnClear" type="button" class="danger">清除這台電腦存的資料</button>
+      </div>
+      <p class="hint">資料只存在這台電腦的瀏覽器裡（換電腦、清除瀏覽資料就不見了），請定期按「匯出 JSON」備份。
+        格式見 <code>data/report.example.json</code>。客戶原則上只寫「姓氏＋先生／小姐」，不要放全名和電話。</p>
+    </details>
+  </main>
+
+  <footer class="no-print"><small>tw-progress-report · Apache-2.0</small></footer>
+
+  <!-- 編輯表單 -->
+  <dialog id="dlgEdit">
+    <form id="editForm" method="dialog">
+      <h2 id="editTitle">編輯</h2>
+      <div id="editFields" class="fields"></div>
+      <p id="editErr" class="err" hidden></p>
+      <div class="row end">
+        <button type="button" id="editCancel">取消</button>
+        <button type="submit" class="primary">儲存</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- LINE 文字版 -->
+  <dialog id="dlgLine">
+    <h2>LINE 文字版</h2>
+    <p class="hint">客戶姓名已依設定遮蔽。可以先在下面改字，再按複製。</p>
+    <textarea id="lineText" rows="16" aria-label="LINE 文字版內容"></textarea>
+    <div class="row end">
+      <span id="lineMsg" class="hint"></span>
+      <button type="button" id="lineClose">關閉</button>
+      <button type="button" id="lineCopy" class="primary">複製</button>
+    </div>
+  </dialog>
+
+  <script src="config.js"></script>
+  <script src="data/sample.js"></script>
+  <script src="js/report.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

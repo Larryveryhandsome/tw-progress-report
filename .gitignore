@@ -1,0 +1,8 @@
+node_modules/
+# 你自己的資料不要進 git，只留範本
+data/*.json
+!data/report.example.json
+*.backup.json
+progress-report-*.json
+.DS_Store
+Thumbs.db
