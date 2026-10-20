@@ -248,7 +248,7 @@
     const warnings = [];
     let src = raw;
     if (typeof src === 'string') {
-      try { src = JSON.parse(src); } catch (e) { return { data: { periods: [] }, warnings: ['JSON 格式錯誤，無法讀取：' + e.message] }; }
+      try { src = JSON.parse(src); } catch (e) { return { data: { periods: [] }, warnings: ['JSON 格式錯誤，無法讀取：' + e.message], parseError: true }; }
     }
     if (Array.isArray(src)) src = { periods: src };
     if (!src || typeof src !== 'object') return { data: { periods: [] }, warnings: ['資料不是物件，已改用空白資料'] };

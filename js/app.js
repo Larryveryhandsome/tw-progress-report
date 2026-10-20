@@ -49,11 +49,13 @@
   let source = '';
   let idx = 0;
   let warnings = [];
+  let noticeTitle = '資料有些地方已自動修正：';
 
   function load(raw, label) {
     const res = R.normalize(raw, CFG);
     data = res.data;
     warnings = res.warnings;
+    noticeTitle = '資料有些地方已自動修正：';
     source = label;
     idx = 0;
   }
@@ -102,7 +104,7 @@
     clear(nt);
     nt.hidden = !warnings.length;
     if (warnings.length) {
-      nt.appendChild(h('b', null, '資料有些地方已自動修正：'));
+      nt.appendChild(h('b', null, noticeTitle));
       nt.appendChild(h('ul', null, warnings.slice(0, 8).map(w => h('li', null, w)),
         warnings.length > 8 ? h('li', null, `……還有 ${warnings.length - 8} 則`) : null));
     }
@@ -353,7 +355,7 @@
     const r = new FileReader();
     r.onload = () => {
       const res = R.normalize(String(r.result), CFG);
-      if (!res.data.periods.length) { warnings = res.warnings; render(); toast('檔案裡沒有可用的期別資料'); return; }
+      if (!res.data.periods.length) { warnings = res.warnings; noticeTitle = res.parseError ? '匯入失敗，檔案不是正確的 JSON：' : '匯入失敗，檔案裡沒有可用的期別資料：'; render(); toast('檔案裡沒有可用的期別資料'); return; }
       if (data.periods.length && !window.confirm(`匯入「${f.name}」會取代目前的 ${data.periods.length} 期資料，確定？`)) return;
       load(String(r.result), f.name);
       persist();

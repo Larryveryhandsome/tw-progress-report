@@ -257,3 +257,13 @@ test('期間文字：同年省略年份、單日、自訂標題', () => {
   assert.equal(R.periodLabel({ start: '2026-05-01', end: '2026-05-01' }), '2026/5/1');
   assert.equal(R.periodLabel({ start: '2026-05-01', end: '2026-05-07', title: '五月第一週' }), '五月第一週');
 });
+
+test('匯入壞掉的 JSON：回傳 parseError，讓畫面顯示「匯入失敗」而不是「已自動修正」', () => {
+  const bad = R.normalize('{oops', CFG);
+  assert.equal(bad.parseError, true);
+  assert.equal(bad.data.periods.length, 0);
+  assert.ok(bad.warnings[0].includes('JSON 格式錯誤'));
+  assert.ok(!R.normalize(exampleText, CFG).parseError);
+  const app = fs.readFileSync(path.join(root, 'js', 'app.js'), 'utf8');
+  assert.ok(app.includes('匯入失敗') && app.includes('noticeTitle'));
+});
