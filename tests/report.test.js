@@ -276,10 +276,10 @@ test('遮蔽：姓名中間有空白、全形、稱謂前有空白、一格多�
 });
 
 test('遮蔽：各種電話寫法、Email、身分證、LINE 帳號都擋得住，一般數字與日期不受影響', () => {
-  for (const t of ['0912.345.678', '０９１２３４５６７８', '0912/345/678', '09 12 34 56 78', '+886 912 345 678', '+886912345678', '02-2345-6789', '(02)2345-6789', '零九一二三四五六七八', '0912\u200b345678']) {
+  for (const t of ['0900.000.678', '０９０００００６７８', '0900/000/678', '09 00 00 06 78', '+886 900 000 678', '+886900000678', '02-2345-6789', '(02)2345-6789', '零九零零零零零六七八', '0900\u200b000678']) {
     const m = R.maskPhones('請聯絡 ' + t + ' 謝謝');
     assert.ok(/\*\*\*|已隱藏/.test(m), t + ' → ' + m);
-    assert.ok(!/345|2345|三四五/.test(m), t + ' → ' + m);
+    assert.ok(!/678|2345|六七八/.test(m), t + ' → ' + m);
   }
   for (const t of ['abc@gmail.com', 'abc＠gmail.com', 'abc at gmail dot com', 'A123456789', '加賴 mysecret99', 'LINE ID: wang_123', '@wang_999']) {
     assert.ok(/已隱藏/.test(R.maskPhones(t)), t);
@@ -288,13 +288,13 @@ test('遮蔽：各種電話寫法、Email、身分證、LINE 帳號都擋得住�
 });
 
 test('LINE 文字版：客戶全名／電話寫在摘要、工作項目、說明裡也會被遮，不會漏出全名', () => {
-  const d = R.normalize({ periods: [{ start: '2026-10-05', end: '2026-10-11', summary: '帶王大明看房，電話 0912345678',
+  const d = R.normalize({ periods: [{ start: '2026-10-05', end: '2026-10-11', summary: '帶王大明看房，電話 0900000678',
     progress: [{ item: '回覆王 大明議價', status: 'doing', note: '王大明的 Email ming@x.com，市話 02-23456789' }],
     todos: [{ task: '寄資料給王大明先生', status: 'todo' }],
-    clients: [{ client: '王大明先生', stage: '議價', progress: '手機 0912-345-678' }] }] }, CFG).data;
+    clients: [{ client: '王大明先生', stage: '議價', progress: '手機 0900-000-678' }] }] }, CFG).data;
   const prev = R.normalize({ periods: [{ start: '2026-09-28', end: '2026-10-04', progress: [{ item: '聯絡王大明', status: 'doing' }], clients: [{ client: '王大明先生' }] }] }, CFG).data.periods[0];
   const txt = R.lineText(d.periods[0], Object.assign({}, CFG, { maskClients: 'title' }), { prev });
-  for (const leak of ['王大明', '大明', '0912345678', '0912-345', '345','ming@x.com', '23456789']) assert.ok(!txt.includes(leak), `漏出 ${leak}：\n${txt}`);
+  for (const leak of ['王大明', '大明', '0900000678', '0900-000', '678','ming@x.com', '23456789']) assert.ok(!txt.includes(leak), `漏出 ${leak}：\n${txt}`);
   assert.ok(txt.includes('王'));
   // none 模式維持原樣
   assert.ok(R.lineText(d.periods[0], Object.assign({}, CFG, { maskClients: 'none' }), {}).includes('王大明'));
@@ -321,11 +321,11 @@ test('效能：50 期 × 每期 200 筆，正規化與 LINE 文字版在 2 秒�
     periods.push({ start: `2026-${mo}-${day}`, end: `2026-${mo}-${day}`,
       progress: Array.from({ length: 100 }, (_, i) => ({ item: `項目${i}`, status: i % 4 ? 'doing' : 'done' })),
       todos: Array.from({ length: 80 }, (_, i) => ({ task: `待辦${i}`, status: 'todo' })),
-      clients: Array.from({ length: 20 }, (_, i) => ({ client: `王大${i}先生`, progress: '電話 0912345678' })) });
+      clients: Array.from({ length: 20 }, (_, i) => ({ client: `王大${i}先生`, progress: '電話 0900000678' })) });
   }
   const t = Date.now();
   const r = R.normalize({ periods }, CFG);
   const txt = R.lineText(r.data.periods[0], CFG, { prev: r.data.periods[1], names: R.clientNames(r.data) });
   assert.ok(Date.now() - t < 2000, `太慢：${Date.now() - t}ms`);
-  assert.ok(!txt.includes('0912345678'));
+  assert.ok(!txt.includes('0900000678'));
 });
