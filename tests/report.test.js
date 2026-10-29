@@ -248,7 +248,7 @@ test('畫面程式沒有把資料塞進 innerHTML，也沒有外部網路資源'
   assert.equal(/innerHTML|outerHTML|insertAdjacentHTML|document\.write/.test(app), false);
   const raw = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
   // 頁尾作者客製化 LINE 連結是使用者點了才開的超連結，不是載入的網路資源；檢查存在後排除
-  assert.match(raw, /<p class="custom-ad">[^<]*<a href="https:\/\/line\.me\/R\/ti\/p\/@812ibtir"/);
+  assert.match(raw, /<p class="custom-ad">[^<]*<a href="https:\/\/line\.me\/ti\/p\/xzHT2IywOM"/);
   const html = raw.replace(/<p class="custom-ad">[\s\S]*?<\/p>/, '');
   assert.equal(/(src|href)=["']https?:/i.test(html), false);
   const css = fs.readFileSync(path.join(root, 'css', 'style.css'), 'utf8');
